@@ -29,25 +29,25 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   ALLOC
  12 .ARM.attributes 00000030  00000000  00000000  00005020  2**0
                   CONTENTS, READONLY
- 13 .debug_info   0000e411  00000000  00000000  00005050  2**0
+ 13 .debug_info   0000e40e  00000000  00000000  00005050  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 14 .debug_abbrev 00001d3d  00000000  00000000  00013461  2**0
+ 14 .debug_abbrev 00001d26  00000000  00000000  0001345e  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 15 .debug_aranges 00000b50  00000000  00000000  000151a0  2**3
+ 15 .debug_aranges 00000b50  00000000  00000000  00015188  2**3
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 16 .debug_rnglists 000008bf  00000000  00000000  00015cf0  2**0
+ 16 .debug_rnglists 000008bf  00000000  00000000  00015cd8  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 17 .debug_macro  000241ec  00000000  00000000  000165af  2**0
+ 17 .debug_macro  000241ec  00000000  00000000  00016597  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 18 .debug_line   0000cdf3  00000000  00000000  0003a79b  2**0
+ 18 .debug_line   0000cdf3  00000000  00000000  0003a783  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 19 .debug_str    000db68b  00000000  00000000  0004758e  2**0
+ 19 .debug_str    000db68b  00000000  00000000  00047576  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 20 .comment      00000043  00000000  00000000  00122c19  2**0
+ 20 .comment      00000043  00000000  00000000  00122c01  2**0
                   CONTENTS, READONLY
- 21 .debug_frame  00002fd8  00000000  00000000  00122c5c  2**2
+ 21 .debug_frame  00002fd8  00000000  00000000  00122c44  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 22 .debug_line_str 00000076  00000000  00000000  00125c34  2**0
+ 22 .debug_line_str 00000076  00000000  00000000  00125c1c  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
 
 Disassembly of section .text:
@@ -513,10 +513,13 @@ void display_number(int num){
  800061e:	b084      	sub	sp, #16
  8000620:	af00      	add	r7, sp, #0
  8000622:	6078      	str	r0, [r7, #4]
+	//lights us LEDs corresponding to the binary value of the given input
+	//LSB to MSB -> LD1, LD2, LD3 and B12
+
 	int shift_num = num;
  8000624:	687b      	ldr	r3, [r7, #4]
  8000626:	60fb      	str	r3, [r7, #12]
-	HAL_GPIO_WritePin(GPIOB, LD1_Pin, shift_num & 1 );
+	HAL_GPIO_WritePin(GPIOB,LD1_Pin, shift_num & 1 );
  8000628:	68fb      	ldr	r3, [r7, #12]
  800062a:	b2db      	uxtb	r3, r3
  800062c:	f003 0301 	and.w	r3, r3, #1

@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "string.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -41,13 +40,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-
-ETH_TxPacketConfig TxConfig;
-ETH_DMADescTypeDef  DMARxDscrTab[ETH_RX_DESC_CNT]; /* Ethernet Rx DMA Descriptors */
-ETH_DMADescTypeDef  DMATxDscrTab[ETH_TX_DESC_CNT]; /* Ethernet Tx DMA Descriptors */
-
-ETH_HandleTypeDef heth;
-
 UART_HandleTypeDef huart3;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
@@ -55,14 +47,17 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 /* USER CODE BEGIN PV */
 int counter = 0;
 int selected_value;
-bool long_press_flag = False;
+int long_press_flag = 0;
+int short_press_flag=0;
+int debounce_time = 200;
+int user_button;
+int seven_map[] = {63, 6, 91, 79, 102, 109, 125, 7, 127, 111};
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_ETH_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 /* USER CODE BEGIN PFP */
@@ -74,14 +69,74 @@ static void MX_USB_OTG_FS_PCD_Init(void);
 
 void display_seven_segment(int num){
 	//complete this function
+	int shift_num = seven_map[num];
+
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, !(shift_num & 1) ); //A
+	shift_num = shift_num >> 1;
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, !(shift_num & 1) );  //B
+	shift_num = shift_num >> 1;
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, !(shift_num & 1) );  //C
+	shift_num = shift_num >> 1;
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, !(shift_num & 1) ); //D
+	shift_num = shift_num >> 1;
+	HAL_GPIO_WritePin(GPIOG, GPIO_PIN_2, !(shift_num & 1)); //E
+	shift_num = shift_num >> 1;
+	HAL_GPIO_WritePin(GPIOG, GPIO_PIN_3, !(shift_num & 1) ); //F
+	shift_num = shift_num >> 1;
+	HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, !(shift_num & 1)); //G
 }
 
-bool check_long_press(void){
-	//complete this too
-}
 
 void flash_leds(void){
 	//make the LEDs flash
+	HAL_GPIO_WritePin(GPIOB, LD1_Pin, 1);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+		HAL_GPIO_WritePin(GPIOB, LD3_Pin, 1);
+		HAL_Delay(800);
+
+		HAL_GPIO_WritePin(GPIOB, LD1_Pin, 0);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
+		HAL_GPIO_WritePin(GPIOB, LD3_Pin, 0);
+		HAL_Delay(200);
+
+		HAL_GPIO_WritePin(GPIOB, LD1_Pin, 1);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+		HAL_GPIO_WritePin(GPIOB, LD3_Pin, 1);
+		HAL_Delay(800);
+
+		HAL_GPIO_WritePin(GPIOB, LD1_Pin, 0);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
+		HAL_GPIO_WritePin(GPIOB, LD3_Pin, 0);
+		HAL_Delay(200);
+
+		HAL_GPIO_WritePin(GPIOB, LD1_Pin, 1);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+		HAL_GPIO_WritePin(GPIOB, LD3_Pin, 1);
+		HAL_Delay(800);
+
+		HAL_GPIO_WritePin(GPIOB, LD1_Pin, 0);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
+		HAL_GPIO_WritePin(GPIOB, LD3_Pin, 0);
+		HAL_Delay(200);
+}
+
+int check_long_press(void){
+		HAL_Delay(50);
+		user_button = HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13);
+		if (user_button){
+			short_press_flag=1;
+		}
+		for (int i=0;i<15;i++){
+			user_button = HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13);
+			if (user_button==0){
+				return 0;
+			}
+			HAL_Delay(200);
+
+		}
+		short_press_flag=0;
+		return 1;
+
 }
 
 /* USER CODE END 0 */
@@ -115,7 +170,6 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_ETH_Init();
   MX_USART3_UART_Init();
   MX_USB_OTG_FS_PCD_Init();
   /* USER CODE BEGIN 2 */
@@ -127,41 +181,32 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
-	  long_press_flag = check_long_press();
 	  display_seven_segment(counter);
+	  user_button = HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13);
+	  if (user_button==1){
+		  long_press_flag=check_long_press();
+	  }
+	  if (short_press_flag){
+		  counter=(counter+1)%10;
+		  display_seven_segment(counter);
+		  short_press_flag=0;
+	  }
+	  if (long_press_flag){
+		  flash_leds();
+		  selected_value=counter;
+		 while(1){
+			 display_seven_segment(counter);
+			 counter--;
+			 if (counter==-1){
+				 counter=selected_value;
+			 }
+			 HAL_Delay(500);
+		 }
+	  }
+    /* USER CODE BEGIN 3 */
 
-	  	while(long_press_flag){
-
-	  		//number selection phase
-
-	  		if (user_button == 1){
-	  			counter = (counter + 1) % 10;
-	  			user_button = 0;
-	  			}
-
-	  		}
-
-	  	selected_value = counter;
-
-	  	while(1){
-
-	  	//countdown phase
-
-	  	if(counter == -1){
-	  		counter = selected_value;
-	  	}
-	  	display_seven_segment(counter);
-
-	  	counter = counter-1;
-
-	  	long_press_flag = False;
-
-	  	}
-
-  }
   /* USER CODE END 3 */
+}
 }
 
 /**
@@ -207,55 +252,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief ETH Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_ETH_Init(void)
-{
-
-  /* USER CODE BEGIN ETH_Init 0 */
-
-  /* USER CODE END ETH_Init 0 */
-
-   static uint8_t MACAddr[6];
-
-  /* USER CODE BEGIN ETH_Init 1 */
-
-  /* USER CODE END ETH_Init 1 */
-  heth.Instance = ETH;
-  MACAddr[0] = 0x00;
-  MACAddr[1] = 0x80;
-  MACAddr[2] = 0xE1;
-  MACAddr[3] = 0x00;
-  MACAddr[4] = 0x00;
-  MACAddr[5] = 0x00;
-  heth.Init.MACAddr = &MACAddr[0];
-  heth.Init.MediaInterface = HAL_ETH_RMII_MODE;
-  heth.Init.TxDesc = DMATxDscrTab;
-  heth.Init.RxDesc = DMARxDscrTab;
-  heth.Init.RxBuffLen = 1524;
-
-  /* USER CODE BEGIN MACADDRESS */
-
-  /* USER CODE END MACADDRESS */
-
-  if (HAL_ETH_Init(&heth) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  memset(&TxConfig, 0 , sizeof(ETH_TxPacketConfig));
-  TxConfig.Attributes = ETH_TX_PACKETS_FEATURES_CSUM | ETH_TX_PACKETS_FEATURES_CRCPAD;
-  TxConfig.ChecksumCtrl = ETH_CHECKSUM_IPHDR_PAYLOAD_INSERT_PHDR_CALC;
-  TxConfig.CRCPadCtrl = ETH_CRC_PAD_INSERT;
-  /* USER CODE BEGIN ETH_Init 2 */
-
-  /* USER CODE END ETH_Init 2 */
-
 }
 
 /**
@@ -338,6 +334,7 @@ static void MX_GPIO_Init(void)
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -346,36 +343,108 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOG_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LD1_Pin|LD3_Pin|LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(USB_PowerSwitchOn_GPIO_Port, USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : USER_Btn_Pin */
-  GPIO_InitStruct.Pin = USER_Btn_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1|GPIO_PIN_4, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, LD1_Pin|LD3_Pin|GPIO_PIN_7, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_2|GPIO_PIN_3|USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PE2 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(USER_Btn_GPIO_Port, &GPIO_InitStruct);
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LD1_Pin LD3_Pin LD2_Pin */
-  GPIO_InitStruct.Pin = LD1_Pin|LD3_Pin|LD2_Pin;
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PC0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : RMII_MDC_Pin RMII_RXD0_Pin RMII_RXD1_Pin */
+  GPIO_InitStruct.Pin = RMII_MDC_Pin|RMII_RXD0_Pin|RMII_RXD1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PA1 PA4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_4;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : RMII_MDIO_Pin RMII_CRS_DV_Pin */
+  GPIO_InitStruct.Pin = RMII_MDIO_Pin|RMII_CRS_DV_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : LD1_Pin LD3_Pin PB7 */
+  GPIO_InitStruct.Pin = LD1_Pin|LD3_Pin|GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : USB_PowerSwitchOn_Pin */
-  GPIO_InitStruct.Pin = USB_PowerSwitchOn_Pin;
+  /*Configure GPIO pin : RMII_TXD1_Pin */
+  GPIO_InitStruct.Pin = RMII_TXD1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
+  HAL_GPIO_Init(RMII_TXD1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PG2 PG3 USB_PowerSwitchOn_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3|USB_PowerSwitchOn_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(USB_PowerSwitchOn_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
   /*Configure GPIO pin : USB_OverCurrent_Pin */
   GPIO_InitStruct.Pin = USB_OverCurrent_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USB_OverCurrent_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PD3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : RMII_TX_EN_Pin RMII_TXD0_Pin */
+  GPIO_InitStruct.Pin = RMII_TX_EN_Pin|RMII_TXD0_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */

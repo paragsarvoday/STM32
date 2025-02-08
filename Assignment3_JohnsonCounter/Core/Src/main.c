@@ -111,7 +111,7 @@ void display_number(int num){
 	//LSB to MSB -> LD1, LD2, LD3 and B12
 
 	int shift_num = num;
-	HAL_GPIO_WritePin(GPIOB, LD1_Pin, shift_num & 1 );
+	HAL_GPIO_WritePin(GPIOB,LD1_Pin, shift_num & 1 );
 	shift_num = shift_num >> 1;
 	HAL_GPIO_WritePin(GPIOB, LD2_Pin, shift_num & 1 );
 	shift_num = shift_num >> 1;
